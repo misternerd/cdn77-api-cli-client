@@ -1,6 +1,9 @@
 use log::{error, info, warn};
 use reqwest::{Response, StatusCode};
 
+/// An alias for the resource ID type
+pub type ResourceId = u64;
+
 /// These are the default status codes as defined here: https://client.cdn77.com/support/api-reference/v3/introduction
 /// Unfortunately, some codes have a duplicate meaning for some API operations
 /// For example, 403 might signify "bad credentials" or "purge-all not allowed on resource"

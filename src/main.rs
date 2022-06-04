@@ -8,10 +8,12 @@ use clap::{Parser, Subcommand};
 use log::{debug, warn};
 use dotenv::dotenv;
 use reqwest::{Client, header};
-use crate::commands_jobs::command_job_purge_all;
+use crate::commands_jobs::{command_jobs_detail, command_jobs_purge_all, command_jobs_list, JobType, command_jobs_prefetch};
+use crate::util::ResourceId;
 
 
 pub const CDN77_API_BASE: &str = "https://api.cdn77.com/v3";
+
 
 #[derive(Parser)]
 #[clap(
@@ -26,47 +28,77 @@ struct CliOpts {
 	/// Either provide the token (dangerous!) or create an environment variable `CDN77_API_TOKEN` (preferred)
 	api_token: Option<String>,
 	#[clap(subcommand)]
-	command: RootCommand,
+	command: RootCommands,
 }
 
 #[derive(Subcommand)]
-enum RootCommand {
+enum RootCommands {
 	#[clap(subcommand)]
 	/// Information about credit balance
-	Billing(BillingCommand),
+	Billing(BillingCommands),
 	#[clap(subcommand)]
 	/// Status and commands for/of puring and prefetching
-	Job(JobCommand),
+	Jobs(JobsCommands),
 	#[clap(subcommand)]
 	/// CRUD operations for origins,
-	Origin(OriginCommand),
+	Origin(OriginCommands),
 	#[clap(subcommand)]
 	/// Changing settings and getting raw logs
-	RawLog(RawLogCommand),
+	RawLogs(RawLogCommands),
 	#[clap(subcommand)]
 	/// CRUD operations for CDN resources
-	Resource(ResourceCommand),
+	Resources(ResourcesCommands),
 	#[clap(subcommand)]
 	/// Get statistics
-	Statistic(StatisticCommand),
+	Statistics(StatisticsCommands),
 	#[clap(subcommand)]
 	/// Infos about storage locations
-	StorageLocation(StorageLocationCommand),
+	Storage(StorageCommands),
 }
 
 #[derive(Debug, Subcommand)]
-enum BillingCommand {
+enum BillingCommands {
 	/// List the current credit balance
 	CreditBalance,
 }
 
 #[derive(Debug, Subcommand)]
-enum JobCommand {
+enum JobsCommands {
+	/// List all jobs of a certain type
+	List {
+		#[clap(short, long)]
+		/// The ID of the resource which you'd like to purge files from
+		resource_id: ResourceId,
+		#[clap(short, long)]
+		/// Which jobs to list (prefetch, purge, purge-all)
+		job_type: JobType,
+	},
+	/// Display details about a job
+	Detail {
+		#[clap(short, long)]
+		/// The ID of the resource which you'd like to purge files from
+		resource_id: ResourceId,
+		#[clap(short, long)]
+		/// The ID of the resource which you'd like to purge files from
+		job_id: String,
+	},
+	/// Prefetch a list of files on a CDN resource
+	Prefetch {
+		#[clap(short, long)]
+		/// The ID of the resource which you'd like to purge files from
+		resource_id: ResourceId,
+		#[clap(short, long)]
+		/// A comma separated list of paths to prefetch
+		paths: String,
+		#[clap(short, long)]
+		/// Use when host header forwarding is active on your CDN Resource
+		upstream_host: Option<String>,
+	},
 	/// Purge a list of files/paths from a resource
 	Purge {
 		#[clap(short, long)]
 		/// The ID of the resource which you'd like to purge files from
-		resource_id: String,
+		resource_id: ResourceId,
 		#[clap(short, long)]
 		/// A comma seperated list of paths you'd like to clear.
 		/// Can contain wildcards (*)
@@ -76,33 +108,33 @@ enum JobCommand {
 	PurgeAll {
 		#[clap(short, long)]
 		/// The ID of the resource which you'd like to purge all files from
-		resource_id: String,
+		resource_id: ResourceId,
 	}
 }
 
 #[derive(Debug, Subcommand)]
-enum OriginCommand {
+enum OriginCommands {
 
 }
 
 #[derive(Debug, Subcommand)]
-enum RawLogCommand {
+enum RawLogCommands {
 
 }
 
 #[derive(Debug, Subcommand)]
-enum ResourceCommand {
+enum ResourcesCommands {
 	/// List all CDN resources
 	List,
 }
 
 #[derive(Debug, Subcommand)]
-enum StatisticCommand {
+enum StatisticsCommands {
 
 }
 
 #[derive(Debug, Subcommand)]
-enum StorageLocationCommand {
+enum StorageCommands {
 
 }
 
@@ -115,37 +147,46 @@ async fn main() {
 	let client = create_cdn77_client(&cli_opts);
 
 	match &cli_opts.command {
-		RootCommand::Billing(command) => {
+		RootCommands::Billing(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/billing
 			panic!("Billing isn't implemented yet! {:?}", command);
 		}
-		RootCommand::Job(command) => {
+		RootCommands::Jobs(command) => {
 			match &command {
-				JobCommand::Purge { resource_id, paths } => {
+				JobsCommands::List {resource_id, job_type} => {
+					command_jobs_list(client, resource_id, job_type).await;
+				},
+				JobsCommands::Detail {resource_id, job_id} => {
+					command_jobs_detail(client, resource_id, job_id).await;
+				},
+				JobsCommands::Prefetch {resource_id, paths, upstream_host} => {
+					command_jobs_prefetch(client, resource_id, paths, upstream_host).await;
+				},
+				JobsCommands::Purge { resource_id, paths } => {
 					debug!("Purging resourceIds={} for resourceId={}", paths, resource_id);
 				}
-				JobCommand::PurgeAll { resource_id } => {
-					command_job_purge_all(client, resource_id).await;
+				JobsCommands::PurgeAll { resource_id } => {
+					command_jobs_purge_all(client, resource_id).await;
 				}
 			}
 		}
-		RootCommand::Origin(command) => {
+		RootCommands::Origin(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/origin
 			panic!("Origin isn't implemented yet! {:?}", command);
 		},
-		RootCommand::RawLog(command) => {
+		RootCommands::RawLogs(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/raw-logs
 			panic!("RawLog isn't implemented yet! {:?}", command);
 		},
-		RootCommand::Resource(command) => {
+		RootCommands::Resources(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/cdn-resources
 			panic!("Origin isn't implemented yet! {:?}", command);
 		},
-		RootCommand::Statistic(command) => {
+		RootCommands::Statistics(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/statistics
 			panic!("Statistic isn't implemented yet! {:?}", command);
 		},
-		RootCommand::StorageLocation(command) => {
+		RootCommands::Storage(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/storage-location
 			panic!("StorageLocation isn't implemented yet! {:?}", command);
 		},
