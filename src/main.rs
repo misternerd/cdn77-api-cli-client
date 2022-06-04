@@ -1,3 +1,5 @@
+extern crate core;
+
 mod commands_jobs;
 mod util;
 
@@ -30,11 +32,32 @@ struct CliOpts {
 #[derive(Subcommand)]
 enum RootCommand {
 	#[clap(subcommand)]
+	/// Information about credit balance
+	Billing(BillingCommand),
+	#[clap(subcommand)]
 	/// Status and commands for/of puring and prefetching
 	Job(JobCommand),
 	#[clap(subcommand)]
+	/// CRUD operations for origins,
+	Origin(OriginCommand),
+	#[clap(subcommand)]
+	/// Changing settings and getting raw logs
+	RawLog(RawLogCommand),
+	#[clap(subcommand)]
 	/// CRUD operations for CDN resources
 	Resource(ResourceCommand),
+	#[clap(subcommand)]
+	/// Get statistics
+	Statistic(StatisticCommand),
+	#[clap(subcommand)]
+	/// Infos about storage locations
+	StorageLocation(StorageLocationCommand),
+}
+
+#[derive(Debug, Subcommand)]
+enum BillingCommand {
+	/// List the current credit balance
+	CreditBalance,
 }
 
 #[derive(Debug, Subcommand)]
@@ -58,9 +81,29 @@ enum JobCommand {
 }
 
 #[derive(Debug, Subcommand)]
+enum OriginCommand {
+
+}
+
+#[derive(Debug, Subcommand)]
+enum RawLogCommand {
+
+}
+
+#[derive(Debug, Subcommand)]
 enum ResourceCommand {
 	/// List all CDN resources
 	List,
+}
+
+#[derive(Debug, Subcommand)]
+enum StatisticCommand {
+
+}
+
+#[derive(Debug, Subcommand)]
+enum StorageLocationCommand {
+
 }
 
 #[tokio::main]
@@ -72,6 +115,10 @@ async fn main() {
 	let client = create_cdn77_client(&cli_opts);
 
 	match &cli_opts.command {
+		RootCommand::Billing(command) => {
+			// TODO Implement https://client.cdn77.com/support/api-reference/v3/billing
+			panic!("Billing isn't implemented yet! {:?}", command);
+		}
 		RootCommand::Job(command) => {
 			match &command {
 				JobCommand::Purge { resource_id, paths } => {
@@ -82,8 +129,25 @@ async fn main() {
 				}
 			}
 		}
+		RootCommand::Origin(command) => {
+			// TODO Implement https://client.cdn77.com/support/api-reference/v3/origin
+			panic!("Origin isn't implemented yet! {:?}", command);
+		},
+		RootCommand::RawLog(command) => {
+			// TODO Implement https://client.cdn77.com/support/api-reference/v3/raw-logs
+			panic!("RawLog isn't implemented yet! {:?}", command);
+		},
 		RootCommand::Resource(command) => {
-			debug!("Got an origin command: {:?}", command);
+			// TODO Implement https://client.cdn77.com/support/api-reference/v3/cdn-resources
+			panic!("Origin isn't implemented yet! {:?}", command);
+		},
+		RootCommand::Statistic(command) => {
+			// TODO Implement https://client.cdn77.com/support/api-reference/v3/statistics
+			panic!("Statistic isn't implemented yet! {:?}", command);
+		},
+		RootCommand::StorageLocation(command) => {
+			// TODO Implement https://client.cdn77.com/support/api-reference/v3/storage-location
+			panic!("StorageLocation isn't implemented yet! {:?}", command);
 		},
 	}
 }

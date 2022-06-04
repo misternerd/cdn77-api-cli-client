@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use reqwest::{Client, StatusCode};
-use log::{debug, error, info, warn};
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use crate::CDN77_API_BASE;
 use crate::util::handle_default_response_status_codes;
@@ -43,7 +43,7 @@ pub async fn command_job_purge_all(client: Client, resource_id: &str) {
 			warn!("Didn't find resource={}", resource_id);
 		},
 		_ => {
-			handle_default_response_status_codes(response);
+			handle_default_response_status_codes(response).await;
 		},
 	}
 }

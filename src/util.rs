@@ -1,4 +1,4 @@
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 use reqwest::{Response, StatusCode};
 
 /// These are the default status codes as defined here: https://client.cdn77.com/support/api-reference/v3/introduction
