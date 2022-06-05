@@ -20,3 +20,11 @@ provide the necessary packages to build it.
 2. Add the static musl target to Rust using `rustup target add x86_64-unknown-linux-musl`
 3. Build the client with `cargo build --target x86_64-unknown-linux-musl --release`
 4. Find your binary in `target/x86_64-unknown-linux-musl/release/cdn77-client` (size is ~13M)
+
+
+## Exit Codes
+Check [main.rs](./src/main.rs) for an up to date list of exit codes
+
+* `2`: The client detected problems with user supplied input parameter, e.g. missing API token or wrong parameter value
+* `3`: The API replied with a non-success code, but it could be expected (resource not found, API token invalid)
+* `4`: The API relied with a non-success code, but it is unexpected (invalid HTTP method, entity cannot be processed etc)

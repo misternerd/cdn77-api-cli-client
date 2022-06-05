@@ -5,7 +5,6 @@ mod util;
 
 use std::env;
 use clap::{Parser, Subcommand};
-use log::{debug, warn};
 use dotenv::dotenv;
 use reqwest::{Client, header};
 use crate::commands_jobs::{command_jobs_detail, command_jobs_purge_all, command_jobs_list, JobType, command_jobs_prefetch};
@@ -13,6 +12,13 @@ use crate::util::ResourceId;
 
 
 pub const CDN77_API_BASE: &str = "https://api.cdn77.com/v3";
+
+/// The user provided some unexpected/invalid input
+pub const EXIT_CODE_INVALID_INPUT: i32 = 2;
+/// The API provided a non-success code, but it might be expected (like "not found")
+pub const EXIT_CODE_API_EXPECTED_ERROR: i32 = 3;
+/// The API provided a non-success code, but it is unexpected (like "invalid input" or "invalid HTTP method")
+pub const EXIT_CODE_API_UNEXPECTED_ERROR: i32 = 4;
 
 
 #[derive(Parser)]
@@ -141,9 +147,7 @@ enum StorageCommands {
 #[tokio::main]
 async fn main() {
 	dotenv().ok();
-	env_logger::init();
 	let cli_opts = CliOpts::parse();
-
 	let client = create_cdn77_client(&cli_opts);
 
 	match &cli_opts.command {
@@ -163,7 +167,7 @@ async fn main() {
 					command_jobs_prefetch(client, resource_id, paths, upstream_host).await;
 				},
 				JobsCommands::Purge { resource_id, paths } => {
-					debug!("Purging resourceIds={} for resourceId={}", paths, resource_id);
+					// TODO Implement
 				}
 				JobsCommands::PurgeAll { resource_id } => {
 					command_jobs_purge_all(client, resource_id).await;
@@ -199,8 +203,8 @@ fn create_cdn77_client(cli_opts: &CliOpts) -> Client {
 		_ => match env::var("CDN77_API_TOKEN") {
 			Ok(t) => t,
 			Err(_) => {
-				warn!("No API token detected, please specify one either in the arguments or via env");
-				std::process::exit(1);
+				eprintln!("No API token detected, please specify one either in the arguments or via env");
+				std::process::exit(EXIT_CODE_INVALID_INPUT);
 			}
 		},
 	};

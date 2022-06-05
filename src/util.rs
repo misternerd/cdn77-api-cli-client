@@ -1,5 +1,6 @@
-use log::{error, info, warn};
+use std::process;
 use reqwest::{Response, StatusCode};
+use crate::{EXIT_CODE_API_EXPECTED_ERROR, EXIT_CODE_API_UNEXPECTED_ERROR};
 
 /// An alias for the resource ID type
 pub type ResourceId = u64;
@@ -11,23 +12,29 @@ pub type ResourceId = u64;
 pub async fn handle_default_response_status_codes(response: Response) {
 	match response.status() {
 		StatusCode::UNAUTHORIZED => {
-			warn!("Got 401/unauthorized. Please check your credentials.");
+			eprintln!("Got 401/unauthorized. Please check your credentials.");
+			process::exit(EXIT_CODE_API_EXPECTED_ERROR);
 		},
 		StatusCode::FORBIDDEN => {
-			warn!("Got 403/forbidden. Please check your credentials or the API operation args.");
+			eprintln!("Got 403/forbidden. Please check your credentials or the API operation args.");
+			process::exit(EXIT_CODE_API_EXPECTED_ERROR);
 		},
 		StatusCode::NOT_FOUND => {
-			info!("The requested resource was not found. Please validate your args.");
+			println!("The requested resource was not found. Please validate your args.");
+			process::exit(EXIT_CODE_API_EXPECTED_ERROR);
 		},
 		StatusCode::METHOD_NOT_ALLOWED => {
-			error!("Received 405/MethodNotAllowed. This might be an issue with an outdated client due to API changes.");
+			eprintln!("Received 405/MethodNotAllowed. This might be an issue with an outdated client due to API changes.");
+			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
 		},
 		StatusCode::UNPROCESSABLE_ENTITY => {
-			error!("Received 422/UnprocessableEntity. This might be an issue with this client, please check for an update.");
+			eprintln!("Received 422/UnprocessableEntity. This might be an issue with this client, please check for an update.");
+			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
 		},
 		code => {
 			let body: String = response.text().await.unwrap_or_else(|_| "FAILED TO READ RESPONSE, EMPTY?".to_string());
-			warn!("Received unexpected/unknown status code={}, please check the response for an explanation: {}", code, body);
+			eprintln!("Received unexpected/unknown status code={}, please check the response for an explanation: {}", code, body);
+			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
 		}
 	};
 }
