@@ -24,7 +24,7 @@ pub const CDN77_API_BASE: &str = "https://api.cdn77.com/v3";
 )]
 #[clap(propagate_version = true)]
 struct CliOpts {
-	#[clap(short, long)]
+	#[clap(short = 'a', long)]
 	/// Either provide the token (dangerous!) or create an environment variable `CDN77_API_TOKEN` (preferred)
 	api_token: Option<String>,
 	#[clap(subcommand)]
@@ -66,47 +66,47 @@ enum BillingCommands {
 enum JobsCommands {
 	/// List all jobs of a certain type
 	List {
-		#[clap(short, long)]
+		#[clap(short = 'r', long)]
 		/// The ID of the resource which you'd like to purge files from
 		resource_id: ResourceId,
-		#[clap(short, long)]
+		#[clap(short = 't', long)]
 		/// Which jobs to list (prefetch, purge, purge-all)
 		job_type: JobType,
 	},
 	/// Display details about a job
 	Detail {
-		#[clap(short, long)]
+		#[clap(short = 'r', long)]
 		/// The ID of the resource which you'd like to purge files from
 		resource_id: ResourceId,
-		#[clap(short, long)]
+		#[clap(short = 'i', long)]
 		/// The ID of the resource which you'd like to purge files from
 		job_id: String,
 	},
 	/// Prefetch a list of files on a CDN resource
 	Prefetch {
-		#[clap(short, long)]
+		#[clap(short = 'r', long)]
 		/// The ID of the resource which you'd like to purge files from
 		resource_id: ResourceId,
-		#[clap(short, long)]
+		#[clap(short = 'p', long)]
 		/// A comma separated list of paths to prefetch
 		paths: String,
-		#[clap(short, long)]
+		#[clap(short = 'u', long)]
 		/// Use when host header forwarding is active on your CDN Resource
 		upstream_host: Option<String>,
 	},
 	/// Purge a list of files/paths from a resource
 	Purge {
-		#[clap(short, long)]
+		#[clap(short = 'r', long)]
 		/// The ID of the resource which you'd like to purge files from
 		resource_id: ResourceId,
-		#[clap(short, long)]
+		#[clap(short = 'p', long)]
 		/// A comma seperated list of paths you'd like to clear.
 		/// Can contain wildcards (*)
 		paths: String,
 	},
 	/// Purge all files from a specific CDN resource
 	PurgeAll {
-		#[clap(short, long)]
+		#[clap(short = 'r', long)]
 		/// The ID of the resource which you'd like to purge all files from
 		resource_id: ResourceId,
 	}
