@@ -7,7 +7,7 @@ use std::env;
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
 use reqwest::{Client, header};
-use crate::commands_jobs::{command_jobs_detail, command_jobs_purge_all, command_jobs_list, JobType, command_jobs_prefetch};
+use crate::commands_jobs::{command_jobs_detail, command_jobs_purge_all, command_jobs_list, JobType, command_jobs_prefetch, command_jobs_purge};
 use crate::util::ResourceId;
 
 
@@ -167,7 +167,7 @@ async fn main() {
 					command_jobs_prefetch(client, resource_id, paths, upstream_host).await;
 				},
 				JobsCommands::Purge { resource_id, paths } => {
-					// TODO Implement
+					command_jobs_purge(client, resource_id, paths).await;
 				}
 				JobsCommands::PurgeAll { resource_id } => {
 					command_jobs_purge_all(client, resource_id).await;

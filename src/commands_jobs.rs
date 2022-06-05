@@ -44,7 +44,7 @@ pub async fn command_jobs_list(client: Client, resource_id: &ResourceId, job_typ
 					println!("Found {} jobs", &r.len());
 
 					for (i, job) in r.into_iter().enumerate() {
-						println!("Job #{}\nID={}\nType={}\nCDN={:?}\nPathsCount={}\nState={}\nQueuedAt={}\nDoneAt={}",
+						println!("\nJob #{}\nID={}\nType={}\nCDN={:?}\nPathsCount={}\nState={}\nQueuedAt={}\nDoneAt={}",
 								 i, job.id, job.resource_type, job.cdn, job.paths_count, job.state, job.queued_at, job.done_at);
 					}
 				}
@@ -84,6 +84,7 @@ struct ListJobDetail {
 	queued_at: String,
 	done_at: String,
 }
+
 
 pub async fn command_jobs_detail(client: Client, resource_id: &ResourceId, job_id: &str) {
 	println!("Getting job details for job_id={} in resource_id={}", job_id, resource_id);
@@ -136,9 +137,10 @@ struct GetJobDetailsResponse {
 	done_at: String,
 }
 
+
 pub async fn command_jobs_prefetch(client: Client, resource_id: &ResourceId, paths: &str, upstream_host: &Option<String>) {
 	let paths: Vec<String> = paths.split(',')
-		.filter(|s| !s.is_empty())
+		.filter(|s| !s.trim().is_empty())
 		.map(|s| s.to_string()).collect();
 
 	if paths.is_empty() {
@@ -160,7 +162,7 @@ pub async fn command_jobs_prefetch(client: Client, resource_id: &ResourceId, pat
 	let response = match response {
 		Ok(r) => r,
 		Err(err) => {
-			eprintln!("Failed to execute purge, e={:?}", err);
+			eprintln!("Failed to execute prefetch, e={:?}", err);
 			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
 		}
 	};
@@ -206,6 +208,76 @@ struct PrefetchResponse {
 	queued_at: String,
 }
 
+
+pub async fn command_jobs_purge(client: Client, resource_id: &ResourceId, paths: &str) {
+	let paths: Vec<String> = paths.split(',')
+		.filter(|s| !s.trim().is_empty())
+		.map(|s| s.to_string()).collect();
+
+	if paths.is_empty() {
+		eprintln!("Please specify at least one path");
+		process::exit(EXIT_CODE_INVALID_INPUT);
+	}
+
+	println!("Purging paths={:?} from resource_id={}", &paths, resource_id);
+	let request_url = format!("{}/cdn/{}/job/purge", CDN77_API_BASE, resource_id);
+	let request = PurgeRequest {
+		paths,
+	};
+	let response = client.post(request_url)
+		.json(&request)
+		.send()
+		.await;
+
+	let response = match response {
+		Ok(r) => r,
+		Err(err) => {
+			eprintln!("Failed to execute purge, e={:?}", err);
+			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
+		}
+	};
+
+	match response.status() {
+		StatusCode::ACCEPTED => {
+			match response.json::<PurgeResponse>().await {
+				Ok(r) => {
+					println!("Successfully executed {} of resource_ids={:?}\nJobID={}\nPaths={}/{:?}\nState={}\nQueuedAt={}",
+							 r.resource_type, r.cdn, r.id, r.paths_count, r.paths, r.state, r.queued_at);
+				}
+				Err(err) => {
+					eprintln!("Failed to deserialize purge response, e={:?}", err);
+					process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
+				}
+			}
+		}
+		StatusCode::NOT_FOUND => {
+			println!("Cannot purge paths, didn't find resource_id={}", resource_id);
+			process::exit(EXIT_CODE_API_EXPECTED_ERROR);
+		}
+		_ => {
+			handle_default_response_status_codes(response).await;
+		}
+	}
+}
+
+#[derive(Serialize)]
+struct PurgeRequest {
+	paths: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct PurgeResponse {
+	id: String,
+	#[serde(rename = "type")]
+	resource_type: String,
+	cdn: HashMap<String, ResourceId>,
+	paths: Vec<String>,
+	paths_count: u64,
+	state: String,
+	queued_at: String,
+}
+
+
 pub async fn command_jobs_purge_all(client: Client, resource_id: &ResourceId) {
 	println!("Purging all data in resource_id={}", &resource_id);
 	let request_url = format!("{}/cdn/{}/job/purge-all", CDN77_API_BASE, &resource_id);
@@ -247,7 +319,6 @@ pub async fn command_jobs_purge_all(client: Client, resource_id: &ResourceId) {
 		}
 	}
 }
-
 
 #[derive(Deserialize)]
 struct PurgeAllResponse {
