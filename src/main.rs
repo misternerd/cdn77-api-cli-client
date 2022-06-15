@@ -1,15 +1,18 @@
 extern crate core;
 
-mod commands_jobs;
-mod util;
-
 use std::env;
+
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
 use reqwest::{Client, header};
-use crate::commands_jobs::{command_jobs_detail, command_jobs_purge_all, command_jobs_list, JobType, command_jobs_prefetch, command_jobs_purge};
+
+use crate::commands_billing::command_billing_get_credit_balance;
+use crate::commands_jobs::{command_jobs_detail, command_jobs_list, command_jobs_prefetch, command_jobs_purge, command_jobs_purge_all, JobType};
 use crate::util::ResourceId;
 
+mod commands_jobs;
+mod util;
+mod commands_billing;
 
 pub const CDN77_API_BASE: &str = "https://api.cdn77.com/v3";
 
@@ -23,10 +26,10 @@ pub const EXIT_CODE_API_UNEXPECTED_ERROR: i32 = 4;
 
 #[derive(Parser)]
 #[clap(
-	name = "cdn77-client",
-	version = "0.1",
-	author, about,
-	long_about = "Command line client for the CDN77 API."
+name = "cdn77-client",
+version = "0.1",
+author, about,
+long_about = "Command line client for the CDN77 API."
 )]
 #[clap(propagate_version = true)]
 struct CliOpts {
@@ -115,18 +118,14 @@ enum JobsCommands {
 		#[clap(short = 'r', long)]
 		/// The ID of the resource which you'd like to purge all files from
 		resource_id: ResourceId,
-	}
+	},
 }
 
 #[derive(Debug, Subcommand)]
-enum OriginCommands {
-
-}
+enum OriginCommands {}
 
 #[derive(Debug, Subcommand)]
-enum RawLogCommands {
-
-}
+enum RawLogCommands {}
 
 #[derive(Debug, Subcommand)]
 enum ResourcesCommands {
@@ -135,14 +134,10 @@ enum ResourcesCommands {
 }
 
 #[derive(Debug, Subcommand)]
-enum StatisticsCommands {
-
-}
+enum StatisticsCommands {}
 
 #[derive(Debug, Subcommand)]
-enum StorageCommands {
-
-}
+enum StorageCommands {}
 
 #[tokio::main]
 async fn main() {
@@ -152,20 +147,23 @@ async fn main() {
 
 	match &cli_opts.command {
 		RootCommands::Billing(command) => {
-			// TODO Implement https://client.cdn77.com/support/api-reference/v3/billing
-			panic!("Billing isn't implemented yet! {:?}", command);
+			match &command {
+				BillingCommands::CreditBalance {} => {
+					command_billing_get_credit_balance(client).await;
+				}
+			}
 		}
 		RootCommands::Jobs(command) => {
 			match &command {
-				JobsCommands::List {resource_id, job_type} => {
+				JobsCommands::List { resource_id, job_type } => {
 					command_jobs_list(client, resource_id, job_type).await;
-				},
-				JobsCommands::Detail {resource_id, job_id} => {
+				}
+				JobsCommands::Detail { resource_id, job_id } => {
 					command_jobs_detail(client, resource_id, job_id).await;
-				},
-				JobsCommands::Prefetch {resource_id, paths, upstream_host} => {
+				}
+				JobsCommands::Prefetch { resource_id, paths, upstream_host } => {
 					command_jobs_prefetch(client, resource_id, paths, upstream_host).await;
-				},
+				}
 				JobsCommands::Purge { resource_id, paths } => {
 					command_jobs_purge(client, resource_id, paths).await;
 				}
@@ -177,23 +175,23 @@ async fn main() {
 		RootCommands::Origin(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/origin
 			panic!("Origin isn't implemented yet! {:?}", command);
-		},
+		}
 		RootCommands::RawLogs(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/raw-logs
 			panic!("RawLog isn't implemented yet! {:?}", command);
-		},
+		}
 		RootCommands::Resources(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/cdn-resources
 			panic!("Origin isn't implemented yet! {:?}", command);
-		},
+		}
 		RootCommands::Statistics(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/statistics
 			panic!("Statistic isn't implemented yet! {:?}", command);
-		},
+		}
 		RootCommands::Storage(command) => {
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/storage-location
 			panic!("StorageLocation isn't implemented yet! {:?}", command);
-		},
+		}
 	}
 }
 

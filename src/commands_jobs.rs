@@ -6,7 +6,7 @@ use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 
 use crate::{CDN77_API_BASE, EXIT_CODE_API_EXPECTED_ERROR, EXIT_CODE_API_UNEXPECTED_ERROR, EXIT_CODE_INVALID_INPUT, ResourceId};
-use crate::util::handle_default_response_status_codes;
+use crate::util::{handle_default_response_status_codes, send_http_request_return_response_or_exit};
 
 // Docs: https://client.cdn77.com/support/api-reference/v3/jobs
 
@@ -25,17 +25,7 @@ pub async fn command_jobs_list(client: Client, resource_id: &ResourceId, job_typ
 	};
 	println!("Listing jobs of type={} for resource_id={}", job_type, &resource_id);
 	let request_url = format!("{}/cdn/{}/job-log/{}", CDN77_API_BASE, &resource_id, job_type);
-	let response = client.get(request_url)
-		.send()
-		.await;
-
-	let response = match response {
-		Ok(r) => r,
-		Err(err) => {
-			eprintln!("Failed to list jobs, e={:?}", err);
-			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
-		}
-	};
+	let response = send_http_request_return_response_or_exit(client.get(request_url)).await;
 
 	match response.status() {
 		StatusCode::OK => {
@@ -89,17 +79,7 @@ struct ListJobDetail {
 pub async fn command_jobs_detail(client: Client, resource_id: &ResourceId, job_id: &str) {
 	println!("Getting job details for job_id={} in resource_id={}", job_id, resource_id);
 	let request_url = format!("{}/cdn/{}/job/{}", CDN77_API_BASE, resource_id, job_id);
-	let response = client.get(request_url)
-		.send()
-		.await;
-
-	let response = match response {
-		Ok(r) => r,
-		Err(err) => {
-			eprintln!("Failed to get job_id={}, e={:?}", job_id, err);
-			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
-		}
-	};
+	let response = send_http_request_return_response_or_exit(client.get(request_url)).await;
 
 	match response.status() {
 		StatusCode::OK => {
@@ -154,18 +134,7 @@ pub async fn command_jobs_prefetch(client: Client, resource_id: &ResourceId, pat
 		paths,
 		upstream_host: upstream_host.clone(),
 	};
-	let response = client.post(request_url)
-		.json(&request)
-		.send()
-		.await;
-
-	let response = match response {
-		Ok(r) => r,
-		Err(err) => {
-			eprintln!("Failed to execute prefetch, e={:?}", err);
-			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
-		}
-	};
+	let response = send_http_request_return_response_or_exit(client.post(request_url).json(&request)).await;
 
 	match response.status() {
 		StatusCode::ACCEPTED => {
@@ -224,18 +193,7 @@ pub async fn command_jobs_purge(client: Client, resource_id: &ResourceId, paths:
 	let request = PurgeRequest {
 		paths,
 	};
-	let response = client.post(request_url)
-		.json(&request)
-		.send()
-		.await;
-
-	let response = match response {
-		Ok(r) => r,
-		Err(err) => {
-			eprintln!("Failed to execute purge, e={:?}", err);
-			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
-		}
-	};
+	let response = send_http_request_return_response_or_exit(client.post(request_url).json(&request)).await;
 
 	match response.status() {
 		StatusCode::ACCEPTED => {
@@ -281,17 +239,7 @@ struct PurgeResponse {
 pub async fn command_jobs_purge_all(client: Client, resource_id: &ResourceId) {
 	println!("Purging all data in resource_id={}", &resource_id);
 	let request_url = format!("{}/cdn/{}/job/purge-all", CDN77_API_BASE, &resource_id);
-	let response = client.post(request_url)
-		.send()
-		.await;
-
-	let response = match response {
-		Ok(r) => r,
-		Err(err) => {
-			eprintln!("Failed to get purge-all, e={:?}", err);
-			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
-		}
-	};
+	let response = send_http_request_return_response_or_exit(client.post(request_url)).await;
 
 	match response.status() {
 		StatusCode::ACCEPTED => {

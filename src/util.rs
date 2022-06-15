@@ -1,5 +1,7 @@
 use std::process;
-use reqwest::{Response, StatusCode};
+
+use reqwest::{RequestBuilder, Response, StatusCode};
+
 use crate::{EXIT_CODE_API_EXPECTED_ERROR, EXIT_CODE_API_UNEXPECTED_ERROR};
 
 /// An alias for the resource ID type
@@ -14,27 +16,39 @@ pub async fn handle_default_response_status_codes(response: Response) {
 		StatusCode::UNAUTHORIZED => {
 			eprintln!("Got 401/unauthorized. Please check your credentials.");
 			process::exit(EXIT_CODE_API_EXPECTED_ERROR);
-		},
+		}
 		StatusCode::FORBIDDEN => {
 			eprintln!("Got 403/forbidden. Please check your credentials or the API operation args.");
 			process::exit(EXIT_CODE_API_EXPECTED_ERROR);
-		},
+		}
 		StatusCode::NOT_FOUND => {
 			println!("The requested resource was not found. Please validate your args.");
 			process::exit(EXIT_CODE_API_EXPECTED_ERROR);
-		},
+		}
 		StatusCode::METHOD_NOT_ALLOWED => {
 			eprintln!("Received 405/MethodNotAllowed. This might be an issue with an outdated client due to API changes.");
 			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
-		},
+		}
 		StatusCode::UNPROCESSABLE_ENTITY => {
 			eprintln!("Received 422/UnprocessableEntity. This might be an issue with this client, please check for an update.");
 			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
-		},
+		}
 		code => {
 			let body: String = response.text().await.unwrap_or_else(|_| "FAILED TO READ RESPONSE, EMPTY?".to_string());
 			eprintln!("Received unexpected/unknown status code={}, please check the response for an explanation: {}", code, body);
 			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
 		}
 	};
+}
+
+pub async fn send_http_request_return_response_or_exit(request: RequestBuilder) -> Response {
+	let response = request.send().await;
+
+	match response {
+		Ok(r) => r,
+		Err(err) => {
+			eprintln!("Failed to get response HTTP request, e={:?}", err);
+			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
+		}
+	}
 }
