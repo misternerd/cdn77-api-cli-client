@@ -8,11 +8,13 @@ use reqwest::{Client, header};
 
 use crate::commands_billing::command_billing_get_credit_balance;
 use crate::commands_jobs::{command_jobs_detail, command_jobs_list, command_jobs_prefetch, command_jobs_purge, command_jobs_purge_all, JobType};
+use crate::commands_storage::{command_storage_detail, command_storage_list};
 use crate::util::ResourceId;
 
-mod commands_jobs;
-mod util;
 mod commands_billing;
+mod commands_jobs;
+mod commands_storage;
+mod util;
 
 pub const CDN77_API_BASE: &str = "https://api.cdn77.com/v3";
 
@@ -75,7 +77,7 @@ enum BillingCommands {
 enum JobsCommands {
 	/// List all jobs of a certain type
 	List {
-		#[clap(short = 'r', long)]
+		#[clap(short = 'i', long)]
 		/// The ID of the resource which you'd like to purge files from
 		resource_id: ResourceId,
 		#[clap(short = 't', long)]
@@ -84,7 +86,7 @@ enum JobsCommands {
 	},
 	/// Display details about a job
 	Detail {
-		#[clap(short = 'r', long)]
+		#[clap(short = 'i', long)]
 		/// The ID of the resource which you'd like to purge files from
 		resource_id: ResourceId,
 		#[clap(short = 'i', long)]
@@ -93,7 +95,7 @@ enum JobsCommands {
 	},
 	/// Prefetch a list of files on a CDN resource
 	Prefetch {
-		#[clap(short = 'r', long)]
+		#[clap(short = 'i', long)]
 		/// The ID of the resource which you'd like to purge files from
 		resource_id: ResourceId,
 		#[clap(short = 'p', long)]
@@ -105,7 +107,7 @@ enum JobsCommands {
 	},
 	/// Purge a list of files/paths from a resource
 	Purge {
-		#[clap(short = 'r', long)]
+		#[clap(short = 'i', long)]
 		/// The ID of the resource which you'd like to purge files from
 		resource_id: ResourceId,
 		#[clap(short = 'p', long)]
@@ -115,7 +117,7 @@ enum JobsCommands {
 	},
 	/// Purge all files from a specific CDN resource
 	PurgeAll {
-		#[clap(short = 'r', long)]
+		#[clap(short = 'i', long)]
 		/// The ID of the resource which you'd like to purge all files from
 		resource_id: ResourceId,
 	},
@@ -137,7 +139,16 @@ enum ResourcesCommands {
 enum StatisticsCommands {}
 
 #[derive(Debug, Subcommand)]
-enum StorageCommands {}
+enum StorageCommands {
+	/// List all storage locations
+	List,
+	/// Show details for a storage location
+	Detail {
+		#[clap(short = 'i', long)]
+		/// The ID of the storage location to show
+		storage_id: String,
+	}
+}
 
 #[tokio::main]
 async fn main() {
@@ -189,8 +200,14 @@ async fn main() {
 			panic!("Statistic isn't implemented yet! {:?}", command);
 		}
 		RootCommands::Storage(command) => {
-			// TODO Implement https://client.cdn77.com/support/api-reference/v3/storage-location
-			panic!("StorageLocation isn't implemented yet! {:?}", command);
+			match &command {
+				StorageCommands::List => {
+					command_storage_list(client).await;
+				}
+				StorageCommands::Detail { storage_id } => {
+					command_storage_detail(client, storage_id).await;
+				}
+			}
 		}
 	}
 }
