@@ -1,8 +1,9 @@
 use std::process;
+use chrono::NaiveDateTime;
 
 use reqwest::{RequestBuilder, Response, StatusCode};
 
-use crate::{EXIT_CODE_API_EXPECTED_ERROR, EXIT_CODE_API_UNEXPECTED_ERROR};
+use crate::{EXIT_CODE_API_EXPECTED_ERROR, EXIT_CODE_API_UNEXPECTED_ERROR, EXIT_CODE_INVALID_INPUT};
 
 /// An alias for the resource ID type
 pub type ResourceId = u64;
@@ -39,6 +40,28 @@ pub async fn handle_default_response_status_codes(response: Response) {
 			process::exit(EXIT_CODE_API_UNEXPECTED_ERROR);
 		}
 	};
+}
+
+pub fn parse_date_time_or_exit(input: &str, error_msg: &str) -> NaiveDateTime {
+	NaiveDateTime::parse_from_str(input, "%Y-%m-%d %H:%M")
+		.unwrap_or_else(|_| {
+			println!("{}", error_msg);
+			process::exit(EXIT_CODE_INVALID_INPUT)
+		})
+}
+
+pub fn parse_resource_ids_optional(input: &Option<String>) -> Option<Vec<ResourceId>> {
+	match input {
+		Some(r) => {
+			let resource_ids = r.split(',')
+				.map(|r| r.trim())
+				.filter(|r| !r.is_empty())
+				.map(|s| s.parse::<ResourceId>().expect("At least one resource id is malformed"))
+				.collect();
+			Some(resource_ids)
+		}
+		None => None,
+	}
 }
 
 pub async fn send_http_request_return_response_or_exit(request: RequestBuilder) -> Response {

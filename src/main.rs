@@ -8,15 +8,18 @@ use reqwest::{Client, header};
 
 use crate::commands_billing::command_billing_get_credit_balance;
 use crate::commands_jobs::{command_jobs_detail, command_jobs_list, command_jobs_prefetch, command_jobs_purge, command_jobs_purge_all, JobType};
+use crate::commands_statistics::{command_stats_bandwidth_95th_percentile, command_stats_get_stats, GetStatsType};
 use crate::commands_storage::{command_storage_detail, command_storage_list};
 use crate::util::ResourceId;
 
 mod commands_billing;
 mod commands_jobs;
 mod commands_storage;
+mod commands_statistics;
 mod util;
 
 pub const CDN77_API_BASE: &str = "https://api.cdn77.com/v3";
+const USER_AGENT: &'static str = "cdn77-api-cli-client (https://github.com/misternerd/cdn77-api-cli-client)";
 
 /// The user provided some unexpected/invalid input
 pub const EXIT_CODE_INVALID_INPUT: i32 = 2;
@@ -136,7 +139,43 @@ enum ResourcesCommands {
 }
 
 #[derive(Debug, Subcommand)]
-enum StatisticsCommands {}
+enum StatisticsCommands {
+	/// Retrieve various stats. This method outputs prettified JSON.
+	Get {
+		#[clap(short = 't', long)]
+		/// Stat type: Costs, Headers, HeadersDetail, HitMiss, HitMissDetail, Traffic, TrafficDetail,
+		stat_type: GetStatsType,
+		#[clap(short = 'f', long)]
+		/// Start date/time in format: YYYY-MM-DD hh:mm
+		from: String,
+		#[clap(short = 'e', long)]
+		/// End date/time in format YYYY-MM-DD hh:mm
+		to: String,
+		#[clap(short = 'i', long)]
+		/// (opt) IDs of CDN resources, defaults to all
+		resource_ids: Option<String>,
+		#[clap(short = 'l', long)]
+		/// (opt) Location names (e.g. 'prague'), defaults to all
+		location_ids: Option<String>,
+		#[clap(short = 'a', long)]
+		/// Aggregation, examples from docs: 5-m, 1-h, 1-d, 1-month (minutes must be divisible by five)
+		aggregation: Option<String>
+	},
+	Bandwidth95Percentile {
+		#[clap(short = 'f', long)]
+		/// Start date/time in format: YYYY-MM-DD hh:mm
+		from: String,
+		#[clap(short = 'e', long)]
+		/// End date/time in format YYYY-MM-DD hh:mm
+		to: String,
+		#[clap(short = 'i', long)]
+		/// (opt) IDs of CDN resources, defaults to all
+		resource_ids: Option<String>,
+		#[clap(short = 'l', long)]
+		/// (opt) Location names (e.g. 'prague'), defaults to all
+		location_ids: Option<String>,
+	},
+}
 
 #[derive(Debug, Subcommand)]
 enum StorageCommands {
@@ -196,6 +235,15 @@ async fn main() {
 			panic!("Origin isn't implemented yet! {:?}", command);
 		}
 		RootCommands::Statistics(command) => {
+			match &command {
+				StatisticsCommands::Get {stat_type, from, to, resource_ids, location_ids, aggregation, } => {
+					command_stats_get_stats(client, stat_type, from, to, resource_ids, location_ids, aggregation).await;
+				},
+				StatisticsCommands::Bandwidth95Percentile {from, to, resource_ids, location_ids} => {
+					command_stats_bandwidth_95th_percentile(client, from, to, resource_ids, location_ids).await;
+				}
+			}
+
 			// TODO Implement https://client.cdn77.com/support/api-reference/v3/statistics
 			panic!("Statistic isn't implemented yet! {:?}", command);
 		}
@@ -227,6 +275,8 @@ fn create_cdn77_client(cli_opts: &CliOpts) -> Client {
 	let mut default_headers = header::HeaderMap::new();
 	let token = format!("Bearer {}", &token);
 	default_headers.insert(header::AUTHORIZATION, header::HeaderValue::from_str(token.as_str()).unwrap());
+	default_headers.append(header::USER_AGENT,
+						  header::HeaderValue::from_str(USER_AGENT).unwrap());
 
 	Client::builder()
 		.default_headers(default_headers)
