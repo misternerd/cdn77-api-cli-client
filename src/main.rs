@@ -8,7 +8,7 @@ use reqwest::{Client, header};
 
 use crate::commands_billing::command_billing_get_credit_balance;
 use crate::commands_jobs::{command_jobs_detail, command_jobs_list, command_jobs_prefetch, command_jobs_purge, command_jobs_purge_all, JobType};
-use crate::commands_statistics::{command_stats_bandwidth_95th_percentile, command_stats_get_stats, GetStatsType};
+use crate::commands_statistics::{command_stats_bandwidth_95th_percentile, command_stats_by_data_center, command_stats_by_resource, command_stats_get_stats, command_stats_sum, command_stats_sum_by_data_center, command_stats_sum_by_resource, GetStatsType};
 use crate::commands_storage::{command_storage_detail, command_storage_list};
 use crate::util::ResourceId;
 
@@ -141,9 +141,9 @@ enum ResourcesCommands {
 #[derive(Debug, Subcommand)]
 enum StatisticsCommands {
 	/// Retrieve various stats. This method outputs prettified JSON.
-	Get {
+	Stats {
 		#[clap(short = 't', long)]
-		/// Stat type: Costs, Headers, HeadersDetail, HitMiss, HitMissDetail, Traffic, TrafficDetail,
+		/// Stat type: bandwidth,costs,headers,headers-detail,hit-miss,hit-miss-detail,traffic,traffic-detail,traffic-miss
 		stat_type: GetStatsType,
 		#[clap(short = 'f', long)]
 		/// Start date/time in format: YYYY-MM-DD hh:mm
@@ -159,9 +159,106 @@ enum StatisticsCommands {
 		location_ids: Option<String>,
 		#[clap(short = 'a', long)]
 		/// Aggregation, examples from docs: 5-m, 1-h, 1-d, 1-month (minutes must be divisible by five)
-		aggregation: Option<String>
+		aggregation: Option<String>,
 	},
+	/// Get bandwidth's 95th percentile
 	Bandwidth95Percentile {
+		#[clap(short = 'f', long)]
+		/// Start date/time in format: YYYY-MM-DD hh:mm
+		from: String,
+		#[clap(short = 'e', long)]
+		/// End date/time in format YYYY-MM-DD hh:mm
+		to: String,
+		#[clap(short = 'i', long)]
+		/// (opt) IDs of CDN resources, defaults to all
+		resource_ids: Option<String>,
+		#[clap(short = 'l', long)]
+		/// (opt) Location names (e.g. 'prague'), defaults to all
+		location_ids: Option<String>,
+	},
+	/// Get stats by CDN resource
+	StatsByResource {
+		#[clap(short = 't', long)]
+		/// Stat type: bandwidth,costs,headers,headers-detail,hit-miss,hit-miss-detail,traffic,traffic-detail,traffic-miss
+		stat_type: GetStatsType,
+		#[clap(short = 'f', long)]
+		/// Start date/time in format: YYYY-MM-DD hh:mm
+		from: String,
+		#[clap(short = 'e', long)]
+		/// End date/time in format YYYY-MM-DD hh:mm
+		to: String,
+		#[clap(short = 'i', long)]
+		/// (opt) IDs of CDN resources, defaults to all
+		resource_ids: Option<String>,
+		#[clap(short = 'l', long)]
+		/// (opt) Location names (e.g. 'prague'), defaults to all
+		location_ids: Option<String>,
+		#[clap(short = 'a', long)]
+		/// Aggregation, examples from docs: 5-m, 1-h, 1-d, 1-month (minutes must be divisible by five)
+		aggregation: Option<String>,
+	},
+	/// Get sum per CDN resource
+	SumByResource {
+		#[clap(short = 't', long)]
+		/// Stat type: headers, traffic, hit-miss, costs
+		stat_type: String,
+		#[clap(short = 'f', long)]
+		/// Start date/time in format: YYYY-MM-DD hh:mm
+		from: String,
+		#[clap(short = 'e', long)]
+		/// End date/time in format YYYY-MM-DD hh:mm
+		to: String,
+		#[clap(short = 'i', long)]
+		/// (opt) IDs of CDN resources, defaults to all
+		resource_ids: Option<String>,
+		#[clap(short = 'l', long)]
+		/// (opt) Location names (e.g. 'prague'), defaults to all
+		location_ids: Option<String>,
+	},
+	/// Get stats per data center
+	StatsByDataCenter {
+		#[clap(short = 't', long)]
+		/// Stat type: bandwidth,costs,headers,headers-detail,hit-miss,hit-miss-detail,traffic,traffic-detail,traffic-miss
+		stat_type: GetStatsType,
+		#[clap(short = 'f', long)]
+		/// Start date/time in format: YYYY-MM-DD hh:mm
+		from: String,
+		#[clap(short = 'e', long)]
+		/// End date/time in format YYYY-MM-DD hh:mm
+		to: String,
+		#[clap(short = 'i', long)]
+		/// (opt) IDs of CDN resources, defaults to all
+		resource_ids: Option<String>,
+		#[clap(short = 'l', long)]
+		/// (opt) Location names (e.g. 'prague'), defaults to all
+		location_ids: Option<String>,
+		#[clap(short = 'a', long)]
+		/// Aggregation, examples from docs: 5-m, 1-h, 1-d, 1-month (minutes must be divisible by five)
+		aggregation: Option<String>,
+	},
+	/// Get sum per CDN resource
+	SumByDataCenter {
+		#[clap(short = 't', long)]
+		/// Stat type: headers, traffic, hit-miss, costs
+		stat_type: String,
+		#[clap(short = 'f', long)]
+		/// Start date/time in format: YYYY-MM-DD hh:mm
+		from: String,
+		#[clap(short = 'e', long)]
+		/// End date/time in format YYYY-MM-DD hh:mm
+		to: String,
+		#[clap(short = 'i', long)]
+		/// (opt) IDs of CDN resources, defaults to all
+		resource_ids: Option<String>,
+		#[clap(short = 'l', long)]
+		/// (opt) Location names (e.g. 'prague'), defaults to all
+		location_ids: Option<String>,
+	},
+	/// Get sum
+	Sum {
+		#[clap(short = 't', long)]
+		/// Stat type: headers, traffic, hit-miss, costs
+		stat_type: String,
 		#[clap(short = 'f', long)]
 		/// Start date/time in format: YYYY-MM-DD hh:mm
 		from: String,
@@ -186,7 +283,7 @@ enum StorageCommands {
 		#[clap(short = 'i', long)]
 		/// The ID of the storage location to show
 		storage_id: String,
-	}
+	},
 }
 
 #[tokio::main]
@@ -236,16 +333,28 @@ async fn main() {
 		}
 		RootCommands::Statistics(command) => {
 			match &command {
-				StatisticsCommands::Get {stat_type, from, to, resource_ids, location_ids, aggregation, } => {
+				StatisticsCommands::Stats { stat_type, from, to, resource_ids, location_ids, aggregation, } => {
 					command_stats_get_stats(client, stat_type, from, to, resource_ids, location_ids, aggregation).await;
-				},
-				StatisticsCommands::Bandwidth95Percentile {from, to, resource_ids, location_ids} => {
+				}
+				StatisticsCommands::Bandwidth95Percentile { from, to, resource_ids, location_ids } => {
 					command_stats_bandwidth_95th_percentile(client, from, to, resource_ids, location_ids).await;
 				}
+				StatisticsCommands::StatsByResource { stat_type, from, to, resource_ids, location_ids, aggregation } => {
+					command_stats_by_resource(client, stat_type, from, to, resource_ids, location_ids, aggregation).await;
+				}
+				StatisticsCommands::SumByResource { stat_type, from, to, resource_ids, location_ids } => {
+					command_stats_sum_by_resource(client, stat_type, from, to, resource_ids, location_ids).await;
+				}
+				StatisticsCommands::StatsByDataCenter { stat_type, from, to, resource_ids, location_ids, aggregation } => {
+					command_stats_by_data_center(client, stat_type, from, to, resource_ids, location_ids, aggregation).await;
+				}
+				StatisticsCommands::SumByDataCenter { stat_type, from, to, resource_ids, location_ids } => {
+					command_stats_sum_by_data_center(client, stat_type, from, to, resource_ids, location_ids).await;
+				}
+				StatisticsCommands::Sum { stat_type, from, to, resource_ids, location_ids } => {
+					command_stats_sum(client, stat_type, from, to, resource_ids, location_ids).await;
+				}
 			}
-
-			// TODO Implement https://client.cdn77.com/support/api-reference/v3/statistics
-			panic!("Statistic isn't implemented yet! {:?}", command);
 		}
 		RootCommands::Storage(command) => {
 			match &command {
@@ -276,7 +385,7 @@ fn create_cdn77_client(cli_opts: &CliOpts) -> Client {
 	let token = format!("Bearer {}", &token);
 	default_headers.insert(header::AUTHORIZATION, header::HeaderValue::from_str(token.as_str()).unwrap());
 	default_headers.append(header::USER_AGENT,
-						  header::HeaderValue::from_str(USER_AGENT).unwrap());
+						   header::HeaderValue::from_str(USER_AGENT).unwrap());
 
 	Client::builder()
 		.default_headers(default_headers)

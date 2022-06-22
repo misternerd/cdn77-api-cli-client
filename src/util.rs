@@ -64,6 +64,10 @@ pub fn parse_resource_ids_optional(input: &Option<String>) -> Option<Vec<Resourc
 	}
 }
 
+pub async fn read_body_or_return_default_error_text(response: Response) -> String {
+	response.text().await.unwrap_or("<CANNOT READ BODY>".to_string())
+}
+
 pub async fn send_http_request_return_response_or_exit(request: RequestBuilder) -> Response {
 	let response = request.send().await;
 
